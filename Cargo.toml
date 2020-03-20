@@ -13,4 +13,5 @@ tokio = {version = "0.2", features = ["rt-threaded", "net", "macros"] }
 hyper-rustls = "0.20"
 http = "0.2"
 robots_txt = "0.6"
-follow-redirects = "0.1"
+log = "0.4"
+env_logger = "0.7"
