@@ -1,0 +1,16 @@
+[package]
+name = "scrapeprice"
+version = "0.1.0"
+authors = ["Lewin Bormann <lewin@lewin-bormann.info>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+scraper = "0.11"
+hyper = "0.13"
+tokio = {version = "0.2", features = ["rt-threaded", "net", "macros"] }
+hyper-rustls = "0.20"
+http = "0.2"
+robots_txt = "0.6"
+follow-redirects = "0.1"
