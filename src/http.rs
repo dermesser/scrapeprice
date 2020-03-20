@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::convert::{Into, TryFrom};
 use std::error::Error;
+use std::fmt;
 
 use http;
 use hyper;
+use log::{info, warn, error};
 use robots_txt::{matcher, parts::robots};
 
 type HyperHTTPS =
@@ -14,15 +16,43 @@ fn new_hyper_client() -> HyperHTTPS {
     b.build(hyper_rustls::HttpsConnector::new())
 }
 
-pub fn bytes_to_str(b: hyper::body::Bytes) -> Result<String, std::string::FromUtf8Error> {
-    String::from_utf8(b.as_ref().to_vec())
-}
-
 fn robots_ok(robots_txt: &str, uri: &hyper::Uri) -> bool {
     let r = robots::Robots::from_str(robots_txt);
     let m = matcher::SimpleMatcher::new(&r.choose_section("*").rules);
     let m2 = matcher::SimpleMatcher::new(&r.choose_section("scrapeprice").rules);
     m.check_path(uri.path()) && m2.check_path(uri.path())
+}
+
+#[derive(Debug)]
+pub enum HTTPError {
+    HyperError(hyper::Error),
+    LogicError(String),
+    StatusError(hyper::StatusCode),
+    HttpError(http::Error),
+}
+
+impl fmt::Display for HTTPError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let e;
+        match self {
+            HTTPError::HyperError(he) => e = format!("{}", he),
+            HTTPError::LogicError(s) => e = s.clone(),
+            HTTPError::StatusError(sc) => e = format!("{}", sc),
+            HTTPError::HttpError(he) => e = format!("{}", he),
+        }
+        write!(f, "HTTPError({})", e)?;
+        Ok(())
+    }
+}
+
+impl Error for HTTPError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            &HTTPError::HyperError(ref e) => Some(e),
+            &HTTPError::HttpError(ref e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 pub struct HTTPS {
@@ -37,6 +67,10 @@ pub struct GetResponse {
     pub body: hyper::body::Bytes,
 }
 
+pub fn bytes_to_str(b: hyper::body::Bytes) -> Result<String, std::string::FromUtf8Error> {
+    String::from_utf8(b.as_ref().to_vec())
+}
+
 impl HTTPS {
     pub fn new() -> HTTPS {
         HTTPS {
@@ -46,51 +80,85 @@ impl HTTPS {
         }
     }
 
-    pub async fn get(&mut self, uri: hyper::Uri) -> Result<GetResponse, Box<dyn Error>> {
+    pub async fn get(&mut self, uri: hyper::Uri) -> Result<GetResponse, HTTPError> {
         if let Ok(true) = self.robots_ok(&uri).await {
-            return self
-                .get_nocheck(uri)
-                .await
-                .map_err(|e| Box::new(e) as Box<dyn Error>);
+            return self.get_nocheck(uri).await;
         }
         unimplemented!()
     }
 
-    pub async fn get_nocheck(&self, uri: hyper::Uri) -> hyper::Result<GetResponse> {
-        use follow_redirects::ClientExt;
+    pub async fn get_nocheck(&self, uri: hyper::Uri) -> Result<GetResponse, HTTPError> {
+        let max_redirect: i32 = 10;
+        let mut uri = uri;
+        let host = uri.host().unwrap().to_string();
 
-        let rq = self.make_request(&uri);
-        let cl = self.client.follow_redirects();
-        let body = cl.request(rq).await?;
-        let status = body.status();
-        let bytes = hyper::body::to_bytes(body).await?;
-        println!("GET {:?} => {}", uri, status);
-        Ok(GetResponse {
-            status: status,
-            body: bytes,
-        })
+        for i in 0..max_redirect {
+            let rq = self.make_request(&uri);
+            let resp = self
+                .client
+                .request(rq)
+                .await
+                .map_err(HTTPError::HyperError)?;
+
+            info!("({}) GET {:?} => {}", i, uri, resp.status());
+            match resp.status().as_u16() {
+                200 => {
+                    let status = resp.status();
+                    let bytes = hyper::body::to_bytes(resp)
+                        .await
+                        .map_err(HTTPError::HyperError)?;
+                    return Ok(GetResponse {
+                        status: status,
+                        body: bytes,
+                    });
+                }
+                301 | 302 | 303 | 307 | 308 => {
+                    let loc = resp.headers().get("location").or(resp.headers().get("Location"));
+                    if let Some(location) = loc {
+                        uri = hyper::Uri::builder()
+                            .authority(host.as_str())
+                            .scheme(uri.scheme_str().unwrap_or("https"))
+                            .path_and_query(location.to_str().unwrap())
+                            .build()
+                            .map_err(HTTPError::HttpError).unwrap();
+                        info!("({}) GET 302 Redirect to: {}", i, uri);
+                        continue;
+                    } else {
+                        warn!("redirect without location: {:?}", resp.headers());
+                        return Err(HTTPError::LogicError(format!("redirect without location: {:?}", resp.headers())))
+                    }
+                }
+                404 => return Err(HTTPError::StatusError(resp.status())),
+                _ => {}
+            }
+        }
+        Err(HTTPError::LogicError(format!(
+            "exhausted redirects on {}",
+            uri
+        )))
     }
 
-    async fn robots_ok(&mut self, uri: &hyper::Uri) -> hyper::Result<bool> {
+    async fn robots_ok(&mut self, uri: &hyper::Uri) -> Result<bool, HTTPError> {
         let host = uri.host().unwrap_or("_");
-        let parts = host.to_string().split(".").collect::<Vec<&str>>();
-        println!("checking robots.txt for {}", host);
+        info!("checking robots.txt for {}", host);
         match self.robots_txt_cache.get(host) {
-            Some(e) => Ok(robots_ok(e, uri)),
+            Some(e) => {
+                let is_ok = robots_ok(e, uri);
+                info!("cached robots.txt for {} ok? {}", host, is_ok);
+                Ok(is_ok)
+            }
             _ => {
-                let mut robots_uri = hyper::Uri::builder()
+                let robots_uri = hyper::Uri::builder()
                     .authority(host)
                     .scheme(uri.scheme_str().unwrap_or("http"))
                     .path_and_query("/robots.txt")
                     .build()
                     .unwrap();
                 let resp = self.get_nocheck(robots_uri).await?;
-                println!("{:?}", resp.body);
                 let robots = bytes_to_str(resp.body).unwrap();
-                println!("{}", robots);
                 let is_ok = robots_ok(&robots, uri);
                 self.robots_txt_cache.insert(host.to_string(), robots);
-
+                info!("robots.txt for {} ok? {}", host, is_ok);
                 Ok(is_ok)
             }
         }
