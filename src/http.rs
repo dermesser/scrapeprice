@@ -1,7 +1,7 @@
+use crate::err::HTTPError;
+
 use std::collections::HashMap;
 use std::convert::{Into, TryFrom};
-use std::error::Error;
-use std::fmt;
 
 use http;
 use hyper;
@@ -21,38 +21,6 @@ fn robots_ok(robots_txt: &str, uri: &hyper::Uri) -> bool {
     let m = matcher::SimpleMatcher::new(&r.choose_section("*").rules);
     let m2 = matcher::SimpleMatcher::new(&r.choose_section("scrapeprice").rules);
     m.check_path(uri.path()) && m2.check_path(uri.path())
-}
-
-#[derive(Debug)]
-pub enum HTTPError {
-    HyperError(hyper::Error),
-    LogicError(String),
-    StatusError(hyper::StatusCode),
-    HttpError(http::Error),
-}
-
-impl fmt::Display for HTTPError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let e;
-        match self {
-            HTTPError::HyperError(he) => e = format!("{}", he),
-            HTTPError::LogicError(s) => e = s.clone(),
-            HTTPError::StatusError(sc) => e = format!("{}", sc),
-            HTTPError::HttpError(he) => e = format!("{}", he),
-        }
-        write!(f, "HTTPError({})", e)?;
-        Ok(())
-    }
-}
-
-impl Error for HTTPError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            &HTTPError::HyperError(ref e) => Some(e),
-            &HTTPError::HttpError(ref e) => Some(e),
-            _ => None,
-        }
-    }
 }
 
 pub struct HTTPS {
