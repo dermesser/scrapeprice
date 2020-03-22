@@ -35,7 +35,7 @@ pub trait Extracted {
 
 /// An Extractor retrieves information from a Document.
 pub trait Extractor {
-    fn extract(&mut self, doc: &extract::Document) -> Option<Box<dyn Extracted>> {
+    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Option<Box<dyn Extracted>> {
         None
     }
 }
@@ -71,9 +71,9 @@ impl Driver {
 
         if let Some(uri) = self.queue.pop() {
             info!("Starting fetch of {}", uri);
-            let resp = self.https.get(uri).await?;
+            let resp = self.https.get(&uri).await?;
             let doc = extract::parse_response(resp)?;
-            if let Some(ref mut extracted) = self.logic.extract.extract(&doc) {
+            if let Some(ref mut extracted) = self.logic.extract.extract(&uri, &doc) {
                 info!("Stored extracted information");
                 self.logic.store.store(extracted.all());
             }

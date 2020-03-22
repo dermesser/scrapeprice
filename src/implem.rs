@@ -5,7 +5,6 @@ use std::iter::FromIterator;
 
 use crate::driver;
 use crate::extract;
-use crate::http;
 use crate::err::HTTPError;
 
 use hyper::Uri;
@@ -20,7 +19,8 @@ fn substring(s: String, (start, len): (usize, usize)) -> String {
 }
 
 impl driver::Extractor for AudiophilItemPriceExtractor {
-    fn extract(&mut self, doc: &extract::Document) -> Option<Box<dyn driver::Extracted>> {
+    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Option<Box<dyn driver::Extracted>> {
+        info!("Extracting info from {}", uri);
         let mut data = doc.get_contents(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();
@@ -50,7 +50,7 @@ impl driver::Extractor for AudiophilItemPriceExtractor {
                 (desc2, price2)
             })
             .collect();
-        println!("{:?}", zipped);
+        info!("Extracted {:?}", zipped);
         None
     }
 }

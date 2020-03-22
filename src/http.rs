@@ -51,16 +51,16 @@ impl HTTPS {
         }
     }
 
-    pub async fn get(&mut self, uri: hyper::Uri) -> Result<GetResponse, HTTPError> {
+    pub async fn get(&mut self, uri: &hyper::Uri) -> Result<GetResponse, HTTPError> {
         if let Ok(true) = self.robots_ok(&uri).await {
             return self.get_nocheck(uri).await;
         }
         unimplemented!()
     }
 
-    pub async fn get_nocheck(&self, uri: hyper::Uri) -> Result<GetResponse, HTTPError> {
+    pub async fn get_nocheck(&self, uri: &hyper::Uri) -> Result<GetResponse, HTTPError> {
         let max_redirect: i32 = 10;
-        let mut uri = uri;
+        let mut uri = uri.clone();
         let host = uri.host().unwrap().to_string();
 
         for i in 0..max_redirect {
@@ -125,7 +125,7 @@ impl HTTPS {
                     .path_and_query("/robots.txt")
                     .build()
                     .unwrap();
-                let resp = self.get_nocheck(robots_uri).await?;
+                let resp = self.get_nocheck(&robots_uri).await?;
                 let robots = bytes_to_str(resp.body).unwrap();
                 let is_ok = robots_ok(&robots, uri);
                 self.robots_txt_cache.insert(host.to_string(), robots);
