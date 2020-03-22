@@ -26,12 +26,26 @@ pub trait Explorer {
     fn next(&mut self, doc: &extract::Document) -> Vec<Uri>;
 }
 
+/// Extracted information can be presented as sequence of key/value pairs.
+pub trait Extracted {
+    fn all(&mut self) -> Box<dyn iter::Iterator<Item = (String, String)> + Send> {
+        Box::new(iter::empty())
+    }
+}
+
+/// An Extractor retrieves information from a Document.
+pub trait Extractor {
+    fn extract(&mut self, doc: &extract::Document) -> Option<Box<dyn Extracted>> {
+        None
+    }
+}
+
 /// DriverLogic holds the driven implementation. The members tell the driver what to fetch, and
 /// what and how to store it.
 pub struct DriverLogic {
     pub explore: Box<dyn Explorer>,
     pub store: Box<dyn Storage>,
-    pub extract: Box<dyn extract::Extractor>,
+    pub extract: Box<dyn Extractor>,
 }
 
 pub struct Driver {

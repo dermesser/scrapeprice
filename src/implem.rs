@@ -19,8 +19,8 @@ fn substring(s: String, (start, len): (usize, usize)) -> String {
     String::from_iter(s.chars().skip(start).take(len))
 }
 
-impl extract::Extractor for AudiophilItemPriceExtractor {
-    fn extract(&mut self, doc: &extract::Document) -> Option<Box<dyn extract::Extracted>> {
+impl driver::Extractor for AudiophilItemPriceExtractor {
+    fn extract(&mut self, doc: &extract::Document) -> Option<Box<dyn driver::Extracted>> {
         let mut data = doc.get_contents(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();

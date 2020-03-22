@@ -60,18 +60,6 @@ fn parse_selector(sel: &str) -> Result<scraper::Selector, HTTPError> {
         .map_err(|_| HTTPError::LogicError(format!("failed to parse selector {}", sel)))
 }
 
-pub trait Extracted {
-    fn all(&mut self) -> Box<dyn iter::Iterator<Item = (String, String)> + Send> {
-        Box::new(iter::empty())
-    }
-}
-
-pub trait Extractor {
-    fn extract(&mut self, doc: &Document) -> Option<Box<dyn Extracted>> {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::Document;
