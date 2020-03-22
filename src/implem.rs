@@ -21,11 +21,11 @@ fn substring(s: String, (start, len): (usize, usize)) -> String {
 
 impl extract::Extractor for AudiophilItemPriceExtractor {
     fn extract(&mut self, doc: &extract::Document) -> Option<Box<dyn extract::Extracted>> {
-        let mut data = doc.get_fields(&[".bez.neu", ".preis strong"]).unwrap();
+        let mut data = doc.get_contents(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();
 
-        let onlytext = rex::compile("^[a-zA-Z0-9\\.+/ -]+").unwrap();
+        let onlytext = rex::compile("^[a-zA-Z0-9\\.,+/ -]+").unwrap();
 
         let zipped: Vec<(String, String)> = descs
             .into_iter()
