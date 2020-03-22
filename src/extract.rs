@@ -35,7 +35,6 @@ impl Document {
 
             let mut values = vec![];
             for e in selected {
-                println!("selected: {}", e.inner_html());
                 values.push(e.inner_html());
             }
             r.push(values);
@@ -49,13 +48,13 @@ impl Document {
 }
 
 pub trait Extracted {
-    fn all(&mut self) -> Box<dyn iter::Iterator<Item=(String,String)>> {
+    fn all(&mut self) -> Box<dyn iter::Iterator<Item = (String, String)> + Send> {
         Box::new(iter::empty())
     }
 }
 
 pub trait Extractor {
-    fn extract(&mut self, doc: &Document) -> Option<&mut dyn Extracted> {
+    fn extract(&mut self, doc: &Document) -> Option<Box<dyn Extracted>> {
         None
     }
 }
@@ -73,9 +72,11 @@ mod tests {
         let mut data = ex.get_fields(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();
-        let zipped: Vec<(String, String)> = descs.into_iter().zip(prices).map(|(desc, price)| {
-            (desc.trim().to_string(), price.trim().to_string())
-        }).collect();
+        let zipped: Vec<(String, String)> = descs
+            .into_iter()
+            .zip(prices)
+            .map(|(desc, price)| (desc.trim().to_string(), price.trim().to_string()))
+            .collect();
         println!("{:?}", zipped);
     }
 }

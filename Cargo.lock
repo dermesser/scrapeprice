@@ -881,6 +881,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fe5bd57d1d7414c6b5ed48563a2c855d995ff777729dcd91c369ec7fea395ae"
 
 [[package]]
+name = "rex-regex"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8961e9d637060caccd8306ca91fdef77a67ea9657ac2e137c09eb7f4c6789c8c"
+
+[[package]]
 name = "ring"
 version = "0.16.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -955,6 +961,7 @@ dependencies = [
  "hyper",
  "hyper-rustls",
  "log",
+ "rex-regex",
  "robots_txt",
  "scraper",
  "tokio",

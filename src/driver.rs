@@ -14,7 +14,7 @@ use log::{info,warn,error};
 /// Store fetched results, which come as key/value pairs, somewhere.
 #[async_trait::async_trait]
 pub trait Storage {
-    async fn store(&mut self, iter: &mut dyn iter::Iterator<Item=(String,String)>) -> Result<(), err::HTTPError>;
+    async fn store(&mut self, iter: Box<dyn iter::Iterator<Item=(String,String)>+Send>) ->Result<(), err::HTTPError>;
 }
 
 /// Return Uris to explore, both as initial set and for every fetched page.
@@ -61,7 +61,7 @@ impl Driver {
             let doc = extract::parse_response(resp)?;
             if let Some(ref mut extracted) = self.logic.extract.extract(&doc) {
                 info!("Stored extracted information");
-                self.logic.store.store(extracted.all().as_mut());
+                self.logic.store.store(extracted.all());
             }
             let next = self.logic.explore.next(&doc);
             info!("Appended URIs after fetch: {:?}", next);
