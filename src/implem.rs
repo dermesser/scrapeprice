@@ -77,7 +77,7 @@ impl driver::Explorer for AudiophilExplorer {
     fn idle(&mut self) -> Vec<Uri> {
         self.known.drain(..).collect()
     }
-    fn next(&mut self, _: &extract::Document) -> Vec<Uri> {
+    fn next(&mut self, _: &Uri, _: &extract::Document) -> Vec<Uri> {
         vec![]
     }
 }

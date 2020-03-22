@@ -23,7 +23,7 @@ pub trait Explorer {
     /// driver.
     fn idle(&mut self) -> Vec<Uri>;
     /// Return pages to fetch based on a fetched document.
-    fn next(&mut self, doc: &extract::Document) -> Vec<Uri>;
+    fn next(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<Uri>;
 }
 
 /// Extracted information can be presented as sequence of key/value pairs.
@@ -77,7 +77,7 @@ impl Driver {
                 info!("Stored extracted information");
                 self.logic.store.store(extracted.all());
             }
-            let next = self.logic.explore.next(&doc);
+            let next = self.logic.explore.next(&uri, &doc);
             info!("Appended URIs after fetch: {:?}", next);
             self.queue.extend(next);
             return Ok(true);
