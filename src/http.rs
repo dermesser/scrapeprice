@@ -1,3 +1,6 @@
+
+#![allow(unused)]
+
 use crate::err::HTTPError;
 
 use std::collections::HashMap;
@@ -35,8 +38,8 @@ pub struct GetResponse {
     pub body: hyper::body::Bytes,
 }
 
-pub fn bytes_to_str(b: hyper::body::Bytes) -> Result<String, std::string::FromUtf8Error> {
-    String::from_utf8(b.as_ref().to_vec())
+pub fn bytes_to_str(b: hyper::body::Bytes) -> Result<String, HTTPError> {
+    String::from_utf8(b.as_ref().to_vec()).map_err(|e| HTTPError::EncodingError(format!("{}", e)))
 }
 
 impl HTTPS {

@@ -1,22 +1,28 @@
+#![allow(unused)]
+
 use crate::err::{logic_err, HTTPError};
 use crate::http;
+
+use std::iter;
 
 use log::info;
 use scraper::Html;
 
-pub struct Extract {
+/// A fetched document is given to the Extractor which gets information from it and returns the
+/// storable data.
+pub struct Document {
     html: Html,
 }
 
-pub fn parse_response(r: http::GetResponse) -> Extract {
-    let content = http::bytes_to_str(r.body).unwrap();
+pub fn parse_response(r: http::GetResponse) -> Result<Document, HTTPError> {
+    let content = http::bytes_to_str(r.body)?;
     let doc = Html::parse_document(content.as_str());
-    Extract { html: doc }
+    Ok(Document { html: doc })
 }
 
-impl Extract {
-    fn new(content: &str) -> Extract {
-        Extract {
+impl Document {
+    fn new(content: &str) -> Document {
+        Document {
             html: Html::parse_document(content),
         }
     }
@@ -42,16 +48,28 @@ impl Extract {
     }
 }
 
+pub trait Extracted {
+    fn all(&mut self) -> Box<dyn iter::Iterator<Item=(String,String)>> {
+        Box::new(iter::empty())
+    }
+}
+
+pub trait Extractor {
+    fn extract(&mut self, doc: &Document) -> Option<&mut dyn Extracted> {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Extract;
+    use super::Document;
 
     use std::iter;
 
     #[test]
-    fn test_extract() {
+    fn test_document() {
         let content = String::from_utf8(std::fs::read("audiophil_sony.html").unwrap()).unwrap();
-        let ex = Extract::new(&content);
+        let ex = Document::new(&content);
         let mut data = ex.get_fields(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();
