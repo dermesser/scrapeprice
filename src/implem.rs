@@ -25,7 +25,7 @@ impl driver::Extractor<(String,String)> for AudiophilItemPriceExtractor {
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();
 
-        let onlytext = rex::compile("^[a-zA-Z0-9\\.,+/ -]+").unwrap();
+        let onlytext = rex::compile("^([a-zA-Z0-9\\.,+/ -]+) +").unwrap();
 
         let zipped: Vec<(String, String)> = descs
             .into_iter()
@@ -86,8 +86,8 @@ pub struct DebuggingStorage { }
 
 #[async_trait::async_trait]
 impl driver::Storage<(String,String)> for DebuggingStorage {
-    async fn store(&mut self, all: Vec<(String,String)>) -> Result<(), HTTPError> {
-        info!("STORAGE: Received {:?}", all);
+    async fn store(&mut self, all: Box<dyn Iterator<Item=(String,String)> + Send>) -> Result<(), HTTPError> {
+        info!("STORAGE: Received {:?}", all.collect::<Vec<(String,String)>>());
         Ok(())
     }
 }

@@ -13,8 +13,8 @@ use log::{info,warn,error};
 
 /// Store fetched results, which come as key/value pairs, somewhere.
 #[async_trait::async_trait]
-pub trait Storage<T> {
-    async fn store(&mut self, d: Vec<T>) ->Result<(), err::HTTPError>;
+pub trait Storage<T: Send> {
+    async fn store(&mut self, d: Box<dyn Iterator<Item=T> + Send>) ->Result<(), err::HTTPError>;
 }
 
 /// Return Uris to explore, both as initial set and for every fetched page.
@@ -49,7 +49,7 @@ pub struct Driver<T> {
     queue: Vec<Uri>,
 }
 
-impl<T> Driver<T> {
+impl<T: 'static + Send> Driver<T> {
     /// Create a new Driver instance.
     pub fn new(logic: DriverLogic<T>, https: Option<http::HTTPS>) -> Driver<T> {
         Driver { https: https.unwrap_or(http::HTTPS::new()), logic: logic, queue: Vec::with_capacity(64) }
@@ -67,7 +67,7 @@ impl<T> Driver<T> {
             let resp = self.https.get(&uri).await?;
             let doc = extract::parse_response(resp)?;
             let extracted = self.logic.extract.extract(&uri, &doc);
-            self.logic.store.store(extracted);
+            self.logic.store.store(Box::new(extracted.into_iter()));
             let next = self.logic.explore.next(&uri, &doc);
             info!("Appended URIs after fetch: {:?}", next);
             self.queue.extend(next);
