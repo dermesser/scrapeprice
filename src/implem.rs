@@ -18,8 +18,8 @@ fn substring(s: String, (start, len): (usize, usize)) -> String {
     String::from_iter(s.chars().skip(start).take(len))
 }
 
-impl driver::Extractor for AudiophilItemPriceExtractor {
-    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Option<Box<dyn driver::Extracted>> {
+impl driver::Extractor<(String,String)> for AudiophilItemPriceExtractor {
+    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<(String,String)> {
         info!("Extracting info from {}", uri);
         let mut data = doc.get_contents(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
@@ -51,7 +51,7 @@ impl driver::Extractor for AudiophilItemPriceExtractor {
             })
             .collect();
         info!("Extracted {:?}", zipped);
-        None
+        zipped
     }
 }
 
@@ -85,9 +85,8 @@ impl driver::Explorer for AudiophilExplorer {
 pub struct DebuggingStorage { }
 
 #[async_trait::async_trait]
-impl driver::Storage for DebuggingStorage {
-    async fn store(&mut self, iter: Box<dyn iter::Iterator<Item=(String,String)>+Send>) -> Result<(), HTTPError> {
-        let all = iter.collect::<Vec<(String,String)>>();
+impl driver::Storage<(String,String)> for DebuggingStorage {
+    async fn store(&mut self, all: Vec<(String,String)>) -> Result<(), HTTPError> {
         info!("STORAGE: Received {:?}", all);
         Ok(())
     }

@@ -13,8 +13,8 @@ use log::{info,warn,error};
 
 /// Store fetched results, which come as key/value pairs, somewhere.
 #[async_trait::async_trait]
-pub trait Storage {
-    async fn store(&mut self, iter: Box<dyn iter::Iterator<Item=(String,String)>+Send>) ->Result<(), err::HTTPError>;
+pub trait Storage<T> {
+    async fn store(&mut self, d: Vec<T>) ->Result<(), err::HTTPError>;
 }
 
 /// Return Uris to explore, both as initial set and for every fetched page.
@@ -26,39 +26,32 @@ pub trait Explorer {
     fn next(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<Uri>;
 }
 
-/// Extracted information can be presented as sequence of key/value pairs.
-pub trait Extracted {
-    fn all(&mut self) -> Box<dyn iter::Iterator<Item = (String, String)> + Send> {
-        Box::new(iter::empty())
-    }
-}
-
 /// An Extractor retrieves information from a Document.
-pub trait Extractor {
-    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Option<Box<dyn Extracted>> {
-        None
+pub trait Extractor<T> {
+    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<T> {
+        vec![]
     }
 }
 
 /// DriverLogic holds the driven implementation. The members tell the driver what to fetch, and
 /// what and how to store it.
-pub struct DriverLogic {
+pub struct DriverLogic<T> {
     pub explore: Box<dyn Explorer>,
-    pub store: Box<dyn Storage>,
-    pub extract: Box<dyn Extractor>,
+    pub store: Box<dyn Storage<T>>,
+    pub extract: Box<dyn Extractor<T>>,
 }
 
-pub struct Driver {
+pub struct Driver<T> {
     https: http::HTTPS,
-    logic: DriverLogic,
+    logic: DriverLogic<T>,
 
     // This could be made into a more elaborate scheduler.
     queue: Vec<Uri>,
 }
 
-impl Driver {
+impl<T> Driver<T> {
     /// Create a new Driver instance.
-    pub fn new(logic: DriverLogic, https: Option<http::HTTPS>) -> Driver {
+    pub fn new(logic: DriverLogic<T>, https: Option<http::HTTPS>) -> Driver<T> {
         Driver { https: https.unwrap_or(http::HTTPS::new()), logic: logic, queue: Vec::with_capacity(64) }
     }
 
@@ -73,10 +66,8 @@ impl Driver {
             info!("Starting fetch of {}", uri);
             let resp = self.https.get(&uri).await?;
             let doc = extract::parse_response(resp)?;
-            if let Some(ref mut extracted) = self.logic.extract.extract(&uri, &doc) {
-                info!("Stored extracted information");
-                self.logic.store.store(extracted.all());
-            }
+            let extracted = self.logic.extract.extract(&uri, &doc);
+            self.logic.store.store(extracted);
             let next = self.logic.explore.next(&uri, &doc);
             info!("Appended URIs after fetch: {:?}", next);
             self.queue.extend(next);
