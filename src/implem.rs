@@ -18,16 +18,16 @@ fn substring(s: String, (start, len): (usize, usize)) -> String {
     String::from_iter(s.chars().skip(start).take(len))
 }
 
-impl driver::Extractor<(String,String)> for AudiophilItemPriceExtractor {
-    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<(String,String)> {
+impl driver::Extractor<ScrapedPrice> for AudiophilItemPriceExtractor {
+    fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<ScrapedPrice> {
         info!("Extracting info from {}", uri);
         let mut data = doc.get_contents(&[".bez.neu", ".preis strong"]).unwrap();
         let prices = data.pop().unwrap();
         let descs = data.pop().unwrap();
 
-        let onlytext = rex::compile("^([a-zA-Z0-9\\.,+/ -]+) +").unwrap();
+        let onlytext = rex::compile("^([a-zA-Z0-9€\\.,+/ -]+)").unwrap();
 
-        let zipped: Vec<(String, String)> = descs
+        let zipped = descs
             .into_iter()
             .zip(prices)
             .map(|(desc, price)| (desc.trim().to_string(), price.trim().to_string()))
@@ -47,7 +47,7 @@ impl driver::Extractor<(String,String)> for AudiophilItemPriceExtractor {
                     price2 = price;
                 }
 
-                (desc2, price2)
+                ScrapedPrice { item: desc2, price: price2, note: 44 }
             })
             .collect();
         info!("Extracted {:?}", zipped);
@@ -84,10 +84,17 @@ impl driver::Explorer for AudiophilExplorer {
 
 pub struct DebuggingStorage { }
 
+#[derive(Debug)]
+pub struct ScrapedPrice {
+    item: String,
+    price: String,
+    note: i32,
+}
+
 #[async_trait::async_trait]
-impl driver::Storage<(String,String)> for DebuggingStorage {
-    async fn store(&mut self, all: Box<dyn Iterator<Item=(String,String)> + Send>) -> Result<(), HTTPError> {
-        info!("STORAGE: Received {:?}", all.collect::<Vec<(String,String)>>());
+impl driver::Storage<ScrapedPrice> for DebuggingStorage {
+    async fn store(&mut self, all: Box<dyn Iterator<Item=ScrapedPrice> + Send>) -> Result<(), HTTPError> {
+        info!("STORAGE: Received {:?}", all.collect::<Vec<ScrapedPrice>>());
         Ok(())
     }
 }
