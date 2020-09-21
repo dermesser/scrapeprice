@@ -1,14 +1,12 @@
-//! Implementations of common traits that are useful to plug together a Driver.
+use crate::util::{ScrapedPrice};
 
-use std::iter;
 use std::iter::FromIterator;
 
 use crate::driver;
 use crate::extract;
-use crate::err::HTTPError;
 
 use hyper::Uri;
-use log::{info,warn,error};
+use log::{info};
 use rex_regex as rex;
 
 pub struct AudiophilItemPriceExtractor {
@@ -79,23 +77,6 @@ impl driver::Explorer for AudiophilExplorer {
     }
     fn next(&mut self, _: &Uri, _: &extract::Document) -> Vec<Uri> {
         vec![]
-    }
-}
-
-pub struct DebuggingStorage { }
-
-#[derive(Debug)]
-pub struct ScrapedPrice {
-    item: String,
-    price: String,
-    note: i32,
-}
-
-#[async_trait::async_trait]
-impl driver::Storage<ScrapedPrice> for DebuggingStorage {
-    async fn store(&mut self, all: Box<dyn Iterator<Item=ScrapedPrice> + Send>) -> Result<(), HTTPError> {
-        info!("STORAGE: Received {:?}", all.collect::<Vec<ScrapedPrice>>());
-        Ok(())
     }
 }
 

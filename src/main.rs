@@ -3,6 +3,9 @@ mod err;
 mod extract;
 mod http;
 mod implem;
+mod util;
+
+use implem::audiophil as audiophil;
 
 use log::{info, warn};
 use env_logger;
@@ -16,9 +19,9 @@ async fn main() {
     //test_fetch_page().await.unwrap();
 
     let logic = driver::DriverLogic {
-        explore: Box::new(implem::AudiophilExplorer::new()),
-        store: Box::new(implem::DebuggingStorage {}),
-        extract: Box::new(implem::AudiophilItemPriceExtractor {}),
+        explore: Box::new(audiophil::AudiophilExplorer::new()),
+        store: Box::new(util::DebuggingStorage {}),
+        extract: Box::new(audiophil::AudiophilItemPriceExtractor {}),
     };
     let mut driver = driver::Driver::new(logic, None);
 
