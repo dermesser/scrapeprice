@@ -35,3 +35,5 @@ Not much more is needed now:
     } 
 ```
 
+For an example, you can check out the `audiophil` module in the `examples`
+directory, which scrapes the website of my local photo store.
