@@ -9,7 +9,7 @@ use log::info;
 use scraper::Html;
 
 /// A fetched document is given to the Extractor which gets information from it and returns the
-/// storable data.
+/// storable data. The underlying logic is implemented by the `scraper` crate.
 pub struct Document {
     html: Html,
 }
@@ -26,6 +26,7 @@ impl Document {
             html: Html::parse_document(content),
         }
     }
+    /// For every CSS selector in `selectors`, return a vec of contents in that selector.
     pub fn get_contents(&self, selectors: &[&str]) -> Result<Vec<Vec<String>>, HTTPError> {
         let mut r = Vec::with_capacity(selectors.len());
         for sel in selectors {
@@ -40,10 +41,12 @@ impl Document {
         }
         Ok(r)
     }
+    /// For a selector, return a vec of contents for the selector.
     pub fn get_content(&self, selector: &str) -> Result<Vec<String>, HTTPError> {
         let v = self.get_contents(&[selector])?;
         Ok(v[0].clone())
     }
+    /// For the elements described by selector, return the attributes
     pub fn get_attr(&self, selector: &str, attr: &str) -> Result<Vec<String>, HTTPError> {
         let selector = parse_selector(selector)?;
         let sel = self.html.select(&selector);
