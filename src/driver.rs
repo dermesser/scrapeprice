@@ -33,6 +33,8 @@ pub trait Queue {
     async fn add(&mut self, uris: &[Uri]) -> Result<(), err::HTTPError>;
     /// Returns a site to scrape next.
     async fn next(&mut self) -> Result<Option<Uri>, err::HTTPError>;
+    /// Confirm that an URL has been visited successfully
+    async fn visited(&mut self, uri: &Uri) -> Result<(), err::HTTPError>;
 }
 
 /// DriverLogic holds the driven implementation. The members tell the driver what to fetch, and

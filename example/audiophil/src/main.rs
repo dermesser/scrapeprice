@@ -14,9 +14,9 @@ async fn main() {
     //test_fetch_page().await.unwrap();
 
     let logic = driver::DriverLogic {
-        explore: Box::new(audiophil::AudiophilExplorer::new()),
         store: Box::new(util::DebuggingStorage {}),
         extract: Box::new(audiophil::AudiophilItemPriceExtractor {}),
+        queue: Box::new(audiophil::AudiophilQueue::new()),
     };
     let mut driver = driver::Driver::new(logic, None);
 

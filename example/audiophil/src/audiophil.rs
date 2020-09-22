@@ -1,21 +1,26 @@
-use crate::util::{ScrapedPrice};
+use scrapeprice::err::HTTPError;
+use scrapeprice::util::ScrapedPrice;
 
+use std::collections::HashSet;
+use std::collections::LinkedList;
 use std::iter::FromIterator;
 
 use scrapeprice::{driver, extract};
 
 use hyper::Uri;
-use log::{info};
+use log::info;
 use rex_regex as rex;
 
-pub struct AudiophilItemPriceExtractor {
-}
+pub struct AudiophilItemPriceExtractor {}
 
 fn substring(s: String, (start, len): (usize, usize)) -> String {
     String::from_iter(s.chars().skip(start).take(len))
 }
 
 impl driver::Extractor<ScrapedPrice> for AudiophilItemPriceExtractor {
+    fn next_sites(&mut self, _uri: &Uri, _doc: &extract::Document) -> Vec<Uri> {
+        vec![]
+    }
     fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<ScrapedPrice> {
         info!("Extracting info from {}", uri);
         let mut data = doc.get_contents(&[".bez.neu", ".preis strong"]).unwrap();
@@ -44,7 +49,11 @@ impl driver::Extractor<ScrapedPrice> for AudiophilItemPriceExtractor {
                     price2 = price;
                 }
 
-                ScrapedPrice { item: desc2, price: price2, note: 44 }
+                ScrapedPrice {
+                    item: desc2,
+                    price: price2,
+                    note: 44,
+                }
             })
             .collect();
         info!("Extracted {:?}", zipped);
@@ -52,31 +61,49 @@ impl driver::Extractor<ScrapedPrice> for AudiophilItemPriceExtractor {
     }
 }
 
-pub struct AudiophilExplorer {
-    known: Vec<hyper::Uri>,
+pub struct AudiophilQueue {
+    q: LinkedList<Uri>,
+    visited: HashSet<Uri>,
 }
 
-impl AudiophilExplorer {
-    pub fn new() -> AudiophilExplorer {
-        let want = vec![
+impl AudiophilQueue {
+    pub fn new() -> AudiophilQueue {
+        let initial: Vec<Uri> = vec![
             "https://audiophil-foto.de/de/shop/kameras/sony/",
             "https://audiophil-foto.de/de/shop/kameras/pentax-ricoh/",
             "https://audiophil-foto.de/de/shop/kameras/leica/",
             "https://audiophil-foto.de/de/shop/objektive/sony/",
             "https://audiophil-foto.de/de/shop/objektive/zeiss/",
             "https://audiophil-foto.de/de/shop/objektive/sigma/",
-        ].into_iter().map(|s| s.parse::<Uri>().unwrap()).collect();
-        AudiophilExplorer { known: want }
+        ]
+        .into_iter()
+        .map(|s| s.parse::<Uri>().unwrap())
+        .collect();
+        AudiophilQueue {
+            q: LinkedList::from_iter(initial.into_iter()),
+            visited: HashSet::new(),
+        }
     }
 }
 
 #[async_trait::async_trait]
-impl driver::Explorer for AudiophilExplorer {
-    async fn idle(&mut self) -> Vec<Uri> {
-        self.known.drain(..).collect()
+impl driver::Queue for AudiophilQueue {
+    async fn add(&mut self, uris: &[Uri]) -> Result<(), HTTPError> {
+        for u in uris {
+            if !self.visited.contains(u) {
+                self.q.push_back(u.clone());
+            }
+        }
+        Ok(())
     }
-    fn next(&mut self, _: &Uri, _: &extract::Document) -> Vec<Uri> {
-        vec![]
+    async fn next(&mut self) -> Result<Option<Uri>, HTTPError> {
+        if !self.q.is_empty() {
+            return Ok(self.q.pop_front());
+        }
+        Ok(None)
+    }
+    async fn visited(&mut self, uri: &Uri) -> Result<(), HTTPError> {
+        self.visited.insert(uri.clone());
+        Ok(())
     }
 }
-
