@@ -18,16 +18,17 @@ pub trait Storage<T: Send> {
 }
 
 /// Return Uris to explore, both as initial set and for every fetched page.
+#[async_trait::async_trait]
 pub trait Explorer {
     /// Return pages to fetch in any case, e.g. time-based. Called on every iteration of the
-    /// driver.
-    fn idle(&mut self) -> Vec<Uri>;
+    /// driver. All returned Uris are appended to the queue.
+    async fn idle(&mut self) -> Vec<Uri>;
     /// Return pages to fetch based on a fetched document.
-    fn next(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<Uri>;
+    async fn next(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<Uri>;
 }
 
 /// An Extractor retrieves information from a Document.
-pub trait Extractor<T> {
+pub trait Extractor<T: Send> {
     fn extract(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<T> {
         vec![]
     }
@@ -58,7 +59,7 @@ impl<T: 'static + Send> Driver<T> {
     /// Run Driver a single step, i.e. first explore, then process one page. Returns true if a page
     /// was processed.
     pub async fn drive(&mut self) -> Result<bool, err::HTTPError> {
-        let new = self.logic.explore.idle();
+        let new = self.logic.explore.idle().await;
         info!("Appended URIs to queue: {:?}", new);
         self.queue.extend(new.into_iter());
 
@@ -68,7 +69,7 @@ impl<T: 'static + Send> Driver<T> {
             let doc = extract::parse_response(resp)?;
             let extracted = self.logic.extract.extract(&uri, &doc);
             self.logic.store.store(Box::new(extracted.into_iter()));
-            let next = self.logic.explore.next(&uri, &doc);
+            let next = self.logic.explore.next(&uri, &doc).await;
             info!("Appended URIs after fetch: {:?}", next);
             self.queue.extend(next);
             return Ok(true);
