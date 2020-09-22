@@ -16,6 +16,7 @@ pub enum HTTPError {
     HyperError(hyper::Error),
     LogicError(String),
     StatusError(hyper::StatusCode),
+    StorageError(String),
 }
 
 impl fmt::Display for HTTPError {
@@ -26,6 +27,7 @@ impl fmt::Display for HTTPError {
             HTTPError::HttpError(he) => e = format!("{}", he),
             HTTPError::HyperError(he) => e = format!("{}", he),
             HTTPError::LogicError(s) => e = s.clone(),
+            HTTPError::StorageError(s) => e = s.clone(),
             HTTPError::StatusError(sc) => e = format!("{}", sc),
         }
         write!(f, "HTTPError({})", e)?;
