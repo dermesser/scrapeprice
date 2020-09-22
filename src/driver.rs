@@ -24,7 +24,7 @@ pub trait Explorer {
     /// driver. All returned Uris are appended to the queue.
     async fn idle(&mut self) -> Vec<Uri>;
     /// Return pages to fetch based on a fetched document.
-    async fn next(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<Uri>;
+    fn next(&mut self, uri: &Uri, doc: &extract::Document) -> Vec<Uri>;
 }
 
 /// An Extractor retrieves information from a Document.
@@ -69,7 +69,7 @@ impl<T: 'static + Send> Driver<T> {
             let doc = extract::parse_response(resp)?;
             let extracted = self.logic.extract.extract(&uri, &doc);
             self.logic.store.store(Box::new(extracted.into_iter()));
-            let next = self.logic.explore.next(&uri, &doc).await;
+            let next = self.logic.explore.next(&uri, &doc);
             info!("Appended URIs after fetch: {:?}", next);
             self.queue.extend(next);
             return Ok(true);

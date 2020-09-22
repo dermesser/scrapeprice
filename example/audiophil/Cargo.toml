@@ -13,4 +13,4 @@ log = "0.4"
 tokio = {version = "0.2", features = ["rt-threaded", "net", "macros"] }
 hyper = "0.13"
 rex-regex = "0.1"
-
+async-trait = "0.1"

@@ -70,8 +70,9 @@ impl AudiophilExplorer {
     }
 }
 
+#[async_trait::async_trait]
 impl driver::Explorer for AudiophilExplorer {
-    fn idle(&mut self) -> Vec<Uri> {
+    async fn idle(&mut self) -> Vec<Uri> {
         self.known.drain(..).collect()
     }
     fn next(&mut self, _: &Uri, _: &extract::Document) -> Vec<Uri> {
